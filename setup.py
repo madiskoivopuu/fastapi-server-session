@@ -20,21 +20,27 @@
 
 from setuptools import setup
 
-#from fastapi_server_session import __author__, __email__, __version__, __description__, __license__, __github__
+__version__ = "0.0.1"
+__author__ = "DevGuyAhnaf"
+__copyright__ = f"Copyright (c) {datetime.now().strftime('%Y')} DevGuyAhnaf"
+__email__ = "ahnaf@ahnafzamil.com"
+__description__ = "A dependency-based extension for FastAPI that adds support for server-sided session management"
+__license__ = "MIT"
+__github__ = "https://github.com/ahnaf-zamil/fastapi-server-session"
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
     name="fastapi-server-session",
-    author="",#__author__,
-    author_email="",#__email__,
-    version="",#__version__,
-    description="",#__description__,
+    author=__author__,
+    author_email=__email__,
+    version=__version__,
+    description=__description__,
     long_description=long_description,
     long_description_content_type="text/markdown",
-    license="",#__license__,
-    url="",#__github__,
+    license=__license__,
+    url=__github__,
     packages=["fastapi_server_session", "fastapi_server_session.interfaces"],
     classifiers=[
         "License :: OSI Approved :: MIT License",
