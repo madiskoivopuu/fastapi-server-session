@@ -13,3 +13,6 @@ exclude = '''
   | dist
 )/
 '''
+
+[project]
+dependencies = ["fastapi", "redis", "pymongo"]
