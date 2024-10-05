@@ -26,12 +26,4 @@ from .interfaces.redis import RedisSessionInterface
 from .manager import SessionManager
 from .session import Session
 
-__version__ = "0.0.1"
-__author__ = "DevGuyAhnaf"
-__copyright__ = f"Copyright (c) {datetime.now().strftime('%Y')} DevGuyAhnaf"
-__email__ = "ahnaf@ahnafzamil.com"
-__description__ = "A dependency-based extension for FastAPI that adds support for server-sided session management"
-__license__ = "MIT"
-__github__ = "https://github.com/ahnaf-zamil/fastapi-server-session"
-
 __all__ = ["RedisSessionInterface", "MongoSessionInterface", "SessionManager", "Session"]
