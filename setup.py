@@ -20,21 +20,21 @@
 
 from setuptools import setup
 
-import fastapi_server_session
+from fastapi_server_session import __author__, __email__, __version__, __description__, __license__, __github__
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
     name="fastapi-server-session",
-    author=fastapi_server_session.__author__,
-    author_email=fastapi_server_session.__email__,
-    version=fastapi_server_session.__version__,
-    description=fastapi_server_session.__description__,
+    author=__author__,
+    author_email=__email__,
+    version=__version__,
+    description=__description__,
     long_description=long_description,
     long_description_content_type="text/markdown",
-    license=fastapi_server_session.__license__,
-    url=fastapi_server_session.__github__,
+    license=__license__,
+    url=__github__,
     packages=["fastapi_server_session", "fastapi_server_session.interfaces"],
     classifiers=[
         "License :: OSI Approved :: MIT License",
