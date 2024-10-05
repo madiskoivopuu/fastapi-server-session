@@ -45,4 +45,5 @@ setup(
     include_package_data=True,
     exclude=("__pycache__",),
     install_requires=["fastapi", "redis", "pymongo"],
+    setup_requires=["fastapi", "redis", "pymongo"],
 )
