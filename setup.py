@@ -46,11 +46,11 @@ setup(
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
-        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.12",
     ],
     python_requires=">=3.6",
     include_package_data=True,
     exclude=("__pycache__",),
-    install_requires=["fastapi", "redis", "pymongo"],
-    setup_requires=["fastapi", "redis", "pymongo"],
+    install_requires=["fastapi", "redis", "pymongo", "aiomysql"],
+    setup_requires=["fastapi", "redis", "pymongo", "aiomysql"],
 )

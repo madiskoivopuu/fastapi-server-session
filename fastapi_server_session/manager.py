@@ -18,9 +18,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from fastapi import Request, Response
+from fastapi import Request, Response, HTTPException
 from .interfaces.base import BaseSessionInterface
-from .session import Session
+from .session import Session, SessionException
 
 import uuid
 
@@ -34,18 +34,63 @@ def is_valid_uuid(val):
 
 
 class SessionManager:
-    def __init__(self, interface: BaseSessionInterface):
+    def __init__(self, interface: BaseSessionInterface, session_duration_sec: int):
         self.interface = interface
+        self.session_duration_sec = session_duration_sec
 
-    def use_session(self, request: Request, response: Response):
-        session_id = str(request.cookies.get("session"))
+    async def get_session(self, request: Request, response: Response):
+        """get_session yields an existing session object for a user
+        
+           If no session is found, None is yielded
+        """
+        session_id = str(request.cookies.get("session"))        
+        data = await self.interface._get_session_data(session_id)
+        if(not data):
+            yield None
+            return
 
-        if not is_valid_uuid(session_id):
-            return Session(request=request, response=response, interface=self.interface)
+        try:
+            async with Session(request=request,
+                    response=response,
+                    interface=self.interface,
+                    session_id=session_id) as session:
+                yield session
+        except SessionException:
+            raise HTTPException(status_code=401, detail="Error fetching session")
+        
+    async def get_or_start_session(self, request: Request, response: Response):
+        """get_session yields an session object
+        
+           If the session does not exist, a new one is created, with the data initially set to an empty dictionary
+        """
+        session_id = str(request.cookies.get("session"))        
+        session = Session(request=request,
+                    response=response,
+                    interface=self.interface,
+                    session_id=session_id)
 
-        return Session(
-            request=request,
-            response=response,
-            interface=self.interface,
-            session_id=session_id,
-        )
+        data = await self.interface._get_session_data(session_id)
+        if(not data):
+            session_id = str(uuid.uuid4())
+            await session.initiate(session_id, {})
+        
+        try:
+            async with session:
+                yield session
+        except SessionException:
+            raise HTTPException(status_code=401, detail="Error fetching session")
+        
+    async def create_session(self, request: Request, response: Response) -> Session:
+        """Creates a new session object with data set to an empty dictionary
+        
+           Returns a new session object, which overrides any existing session the user might have
+        """
+        session_id = str(uuid.uuid4())
+        session = Session(request=request,
+                    response=response,
+                    interface=self.interface,
+                    session_id=session_id)
+        await session.initiate(session_id, {})
+        return session
+
+

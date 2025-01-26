@@ -73,7 +73,7 @@ class MongoSessionInterface(BaseSessionInterface):
             self.created_at_key, expireAfterSeconds=self.expire.total_seconds()
         )
 
-    def _set_session_data(self, session_id: str, data: dict):
+    async def _set_session_data(self, session_id: str, data: dict):
         _db = self.client[self.db]
         _collection = _db[self.collection]
         query = {self.session_id_key: session_id}
@@ -85,7 +85,7 @@ class MongoSessionInterface(BaseSessionInterface):
         )
         _collection.update_one(query, {"$set": {**data}}, upsert=True)
 
-    def _get_session_data(self, session_id: str) -> dict:
+    async def _get_session_data(self, session_id: str) -> dict | None:
         try:
             _db = self.client[self.db]
             _collection = _db[self.collection]
@@ -94,8 +94,11 @@ class MongoSessionInterface(BaseSessionInterface):
         except Exception:
             raise
 
-    def _delete_session(self, session_id: str):
+    async def _delete_session(self, session_id: str):
         _db = self.client[self.db]
         _collection = _db[self.collection]
         query = {self.session_id_key: session_id}
         _collection.delete_one(query)
+
+    async def _get_expiration_date(self, session_id: str):
+        raise NotImplementedError("MongoDB users, implement it")

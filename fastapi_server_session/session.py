@@ -24,7 +24,10 @@ from fastapi import Response, Request
 from typing import Optional
 
 import uuid
+from datetime import datetime, timezone, timedelta
 
+class SessionException(Exception):
+    pass
 
 class Session(MutableMapping):
     def __init__(
@@ -32,57 +35,91 @@ class Session(MutableMapping):
         response: Response,
         request: Request,
         interface: BaseSessionInterface,
+        session_duration: timedelta = timedelta(days=1),
         session_id: Optional[str] = None,
     ):
         self.response = response
         self.request = request
         self.session_id = session_id
         self.interface = interface
+        self.session_duration = session_duration
 
-    def _initiate_session(self, session_id: str) -> None:
+        self._expiration_date = None
+        self._data = {}
+        self.__entered = False
+
+    def _validity_check(self):
+        if(self.__entered == False):
+            raise SessionException("Use `async with Session(...)` or FastAPI `session = Depends(...)` to correctly start the session")
+
+    async def __aenter__(self):
+        self.__entered = True
+
+        self._expiration_date = self.interface._get_expiration_date()
+        self._data = await self.interface._get_session_data(self.session_id)
+        if(self._data == None):
+            raise SessionException("A session must be initiated with `Session.initiate` before using `with Session(...)`")
+
+    async def __aexit__(self):
+        sess_exit_time = datetime.now(timezone.utc)
+        if((self._expiration_date - sess_exit_time).total_seconds() < 0):
+            self.clear()
+            raise SessionException("Session has expired")
+
+        if(self._data != None): # session not deleted...
+            await self.interface._set_session_data(self.session_id, self._data, datetime.now(timezone.utc))
+
+    async def initiate(self, session_id: str, data: dict) -> None:
         self.session_id = session_id
-        self.interface._set_session_data(session_id, {})
+
+        expires_at_date = datetime.now(timezone.utc) + self.session_duration
+        await self.interface._set_session_data(session_id, data, expires_at_date)
         self.response.set_cookie(
-            "session", session_id, expires=60 * 60 * 24 * 15, httponly=True
-        )  # Expires after 15 days
+            "session", session_id, expires=self.session_duration.total_seconds(), httponly=True
+        )  # Expires after 1 days
 
-    def _session_check(self) -> None:
-        if not self.session_id or not self.interface._get_session_data(self.session_id):
-            self._initiate_session(str(uuid.uuid4()))
-
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clears and deletes the session"""
-        self.interface._delete_session(self.session_id)
+        self._data = None
+        await self.interface._delete_session(self.session_id)
         self.response.delete_cookie("session", httponly=True)
 
     def __setitem__(self, key, value) -> None:
-        self._session_check()
-        data = self.interface._get_session_data(self.session_id)
-        data[key] = value
-        self.interface._set_session_data(self.session_id, data)
+        self._validity_check()
+
+        self._data[key] = value
+        pass
 
     def __getitem__(self, key) -> Optional[any]:
+        self._validity_check()
+
         try:
-            return self.interface._get_session_data(self.session_id).get(key)
+            return self._data[key]
         except:
             return None
 
     def __delitem__(self, key) -> None:
-        data = self.__getitem__(key)
+        self._validity_check()
+
         try:
-            del data[key]
-            self.interface._set_session_data(self.session_id, data)
+            del self._data[key]
         except (KeyError, TypeError):  # Session key did not exist or data is None
             return
 
     def __iter__(self):
-        return iter(self.interface._get_session_data(self.session_id))
+        self._validity_check()
+        
+        return iter(self._data)
 
-    def __len__(self):
-        return len(self.interface._get_session_data(self.session_id))
+    def __len__(self) -> int:
+        self._validity_check()
 
-    def __str__(self):
-        return str(self.interface._get_session_data(self.session_id))
+        return len(self._data)
 
-    def __repr__(self):
+    def __str__(self) -> str:
+        self._validity_check()
+
+        return str(self._data)
+
+    def __repr__(self)-> str:
         return f"<{self.__class__.__name__} id={self.session_id}>"

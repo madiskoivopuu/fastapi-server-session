@@ -10,55 +10,61 @@ At the moment, it supports using Redis and MongoDB as the session datastore. But
 
 ## Quickstart
 
-#### For Redis Backend
+
+#### For async MySQL Backend
+
+Note that using this backend requires the `UUID_TO_BIN` function to be present in MySQL.
+
 ```py
-from fastapi_server_session import SessionManager, RedisSessionInterface, Session
-import redis
-
-
-session_manager = SessionManager(
-    interface=RedisSessionInterface(redis.from_url("redis://localhost"))
-)
-```
-
-#### For Mongo Backend
-```py
-from fastapi_server_session import SessionManager, MongoSessionInterface, Session
+from fastapi_server_session import SessionManager, AsyncMysqlSessionInterface, Session
 import pymongo
+import aiomysql
 
 session_manager = SessionManager(
-    interface=MongoSessionInterface(
-        pymongo.MongoClient(
-            "mongodb://localhost:27017"
-        ),
-        db="users",
-        collection="session",
+    interface=AsyncMysqlSessionInterface(
+        pool=await aiomysql.create_pool(host="127.0.0.1", port=3306, user="sessions", password="", db="sessions")
+        table_name="session"
     )
 )
-
 ```
 
+#### For Redis & MongoDB Backend
+These backends are currently not supported. While the implementations exist, they will no longer work after some tweaks that had to be done to get MySQL working.
+
+If you wish to implement them yourself, fork the repo, create the implementations and then open a pull request.
+
+#### Session usage
+
+To connect each request with a session, use FastAPI's dependency injection as shown below:
+
 ```py
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request, Response
 
 api = FastAPI()
 
+@api.get("/auth")
+async def get_session(request: Request, response: Response):
+    session = session_manager.create_session(request, response)
+    # to use the session right after creating it, you must use the *async with* clause
+    # this must also be used, if you do not use FastAPI's dependency injection
+    async with session:
+        session["auth"] = "yes"
+    return {"status": "new_session"} # Check the cookies that FastAPI returned in the response
 
 @api.get("/set")
-async def set_session(session: Session = Depends(session_manager.use_session)):
+async def set_session(session: Session = Depends(session_manager.get_session)):
+    if(session == None)
+        return {"status": "unauthenticated"}
+
     session["key"] = "value"
     return {"status": "ok"}
 
 @api.get("/get")
-async def get_session(session: Session = Depends(session_manager.use_session)):
+async def get_session(session: Session = Depends(session_manager.get_session)):
     return {"value": session["key"]} # or session.get("key")
 ```
 
-## Contributing
-
-If you are considering to contribute, thanks a lot! We welcome all contributors here and, you can help out as well.
-
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+Session manager also has a method called `get_or_start_session`, which will initiate a new session for a user, if it doesn't already exist. If you have a reason to automatically start a new session for each request, then prefer the use of this method.
 
 ## License
 

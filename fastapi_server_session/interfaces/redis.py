@@ -35,16 +35,19 @@ class RedisSessionInterface(BaseSessionInterface):
     def __init__(self, redis_client: redis.Redis):
         self.redis = redis_client
 
-    def _set_session_data(self, session_id: str, data: dict):
+    async def _set_session_data(self, session_id: str, data: dict):
         self.redis.set(
             session_id, json.dumps(data), ex=timedelta(days=15)
         )  # Session expires after 15 days
 
-    def _get_session_data(self, session_id: str) -> dict:
+    async def _get_session_data(self, session_id: str) -> dict | None:
         try:
             return json.loads(self.redis.get(session_id))
         except:
-            return {}
+            return None
 
-    def _delete_session(self, session_id: str):
+    async def _delete_session(self, session_id: str):
         self.redis.delete(str(session_id))
+
+    async def _get_expiration_date(self, session_id: str):
+        raise NotImplementedError("Redis users, implement it")

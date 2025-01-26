@@ -19,6 +19,7 @@
 # SOFTWARE.
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 
 
 class BaseSessionInterface(ABC):
@@ -27,16 +28,23 @@ class BaseSessionInterface(ABC):
     """
 
     @abstractmethod
-    def _get_session_data(self, session_id: str) -> dict:
+    async def _get_session_data(self, session_id: str) -> dict | None:
         """Returns session data for the specific request.
 
-        If no session is available, it returns an empty dict
+        If no session is available, returns None
         """
 
     @abstractmethod
-    def _set_session_data(self, session_id: str, data: dict):
+    async def _set_session_data(self, session_id: str, data: dict, expires_at_date: datetime):
         """Stores session data  in a datastore."""
 
     @abstractmethod
-    def _delete_session(self, session_id: str):
+    async def _delete_session(self, session_id: str):
         """Deletes the session including the data"""
+
+    @abstractmethod
+    async def _get_expiration_date(self, session_id: str) -> datetime | None:
+        """Returns an UTC datetime denoting when the session will expire
+        
+        If no session is available, returns None
+        """
