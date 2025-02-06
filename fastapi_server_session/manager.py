@@ -34,9 +34,8 @@ def is_valid_uuid(val):
 
 
 class SessionManager:
-    def __init__(self, interface: BaseSessionInterface, session_duration_sec: int):
+    def __init__(self, interface: BaseSessionInterface):
         self.interface = interface
-        self.session_duration_sec = session_duration_sec
 
     async def get_session(self, request: Request, response: Response):
         """get_session yields an existing session object for a user
