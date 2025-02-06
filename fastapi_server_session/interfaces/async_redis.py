@@ -41,11 +41,12 @@ class AsyncRedisSessionInterface(BaseSessionInterface):
     async def _set_session_data(self, session_id: str, data: dict, expiration_date: datetime | None):
         sec_until_exp: int | None = None
         if(expiration_date != None):
-            sec_until_exp = int((datetime.now(timezone.utc) - expiration_date).total_seconds())
+            sec_until_exp = int((expiration_date - datetime.now(timezone.utc)).total_seconds())
 
         await self.redis.set(
             session_id, json.dumps(data), ex=sec_until_exp
         )
+
 
     async def _get_session_data(self, session_id: str) -> dict | None:
         try:
