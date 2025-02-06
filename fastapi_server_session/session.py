@@ -35,7 +35,7 @@ class Session(MutableMapping):
         response: Response,
         request: Request,
         interface: BaseSessionInterface,
-        session_duration: timedelta = timedelta(days=1),
+        session_duration: timedelta,
         session_id: Optional[str] = None,
     ):
         self.response = response
@@ -44,7 +44,7 @@ class Session(MutableMapping):
         self.interface = interface
         self.session_duration = session_duration
 
-        self._expiration_date = None
+        self._expiration_date: datetime | None = None
         self._data = {}
         self.__entered = False
 
@@ -69,7 +69,7 @@ class Session(MutableMapping):
             raise SessionException("Session has expired")
 
         if(self._data != None): # session not deleted...
-            await self.interface._set_session_data(self.session_id, self._data, datetime.now(timezone.utc))
+            await self.interface._set_session_data(self.session_id, self._data, self._expiration_date)
 
     async def initiate(self, session_id: str, data: dict) -> None:
         self.session_id = session_id

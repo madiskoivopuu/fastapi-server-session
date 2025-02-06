@@ -55,10 +55,8 @@ class AsyncMysqlSessionInterface(BaseSessionInterface):
     def __init__(
         self,
         pool: aiomysql.Pool,
-        until_expires: timedelta = timedelta(days=15)
     ):
         self.pool = pool
-        self.expire = until_expires
         self._table_created = False
 
     async def init_tables(self):
@@ -73,18 +71,24 @@ class AsyncMysqlSessionInterface(BaseSessionInterface):
 
         self._table_created = True
 
-    async def _set_session_data(self, session_id: str, data: dict, expiration_date: datetime):
+    async def _set_session_data(self, session_id: str, data: dict, expiration_date: datetime | None):
         await self.init_tables()
 
         session_data = json.dumps(data)
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
-                await cursor.execute("""INSERT INTO sessions 
+                q = """INSERT INTO sessions 
                                         (session_id, session_data, expires_at_utc) 
-                                     VALUES 
+                                    VALUES 
                                         (UUID_TO_BIN(%s, 1), %s, %s) 
-                                     ON DUPLICATE KEY UPDATE 
-                                        session_data = %s""", (session_id, session_data, expiration_date, session_data))
+                                    ON DUPLICATE KEY UPDATE 
+                                        session_data = %s""" # exp date is not None for a new session
+                q_params = [session_id, session_data, expiration_date, session_data]
+                if(expiration_date != None):
+                    q += ", expires_at_utc = %s"
+                    q_params.append(expiration_date)
+
+                await cursor.execute(q, q_params)
                 await conn.commit()
 
     async def _get_session_data(self, session_id: str) -> dict:
@@ -107,7 +111,5 @@ class AsyncMysqlSessionInterface(BaseSessionInterface):
             async with conn.cursor() as cursor:
                 await cursor.execute("DELETE FROM sessions WHERE session_id = UUID_TO_BIN(%s, 1)", (session_id, ))
 
-    async def _get_expiration_date(self, session_id):
-        await self.init_tables()
-
-        return await super()._get_expiration_date(session_id)
+    async def _get_expiration_date(self, session_id: str):
+        raise NotImplementedError("not implemented..")

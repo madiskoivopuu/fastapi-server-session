@@ -31,12 +31,12 @@ class BaseSessionInterface(ABC):
     async def _get_session_data(self, session_id: str) -> dict | None:
         """Returns session data for the specific request.
 
-        If no session is available, returns None
+           If no session is available, returns None
         """
 
     @abstractmethod
-    async def _set_session_data(self, session_id: str, data: dict, expires_at_date: datetime):
-        """Stores session data  in a datastore."""
+    async def _set_session_data(self, session_id: str, data: dict, expires_at_date: datetime | None):
+        """Stores session data in a datastore."""
 
     @abstractmethod
     async def _delete_session(self, session_id: str):

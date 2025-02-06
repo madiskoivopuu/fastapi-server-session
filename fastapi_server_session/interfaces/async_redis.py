@@ -35,14 +35,16 @@ class AsyncRedisSessionInterface(BaseSessionInterface):
     def __init__(
         self, 
         redis_client: aioredis.Redis,
-        until_expires = timedelta(days=1)
     ):
         self.redis = redis_client
-        self.until_expires = until_expires
 
-    async def _set_session_data(self, session_id: str, data: dict):
+    async def _set_session_data(self, session_id: str, data: dict, expiration_date: datetime | None):
+        sec_until_exp: int | None = None
+        if(expiration_date != None):
+            sec_until_exp = int((datetime.now(timezone.utc) - expiration_date).total_seconds())
+
         await self.redis.set(
-            session_id, json.dumps(data), ex=self.until_expires
+            session_id, json.dumps(data), ex=sec_until_exp
         )
 
     async def _get_session_data(self, session_id: str) -> dict | None:
@@ -56,7 +58,9 @@ class AsyncRedisSessionInterface(BaseSessionInterface):
 
     async def _get_expiration_date(self, session_id: str) -> datetime:
         ttl_left = await self.redis.ttl(session_id)
-        if(ttl_left < 0):
+        if(ttl_left == -1):
+            return 99999999999
+        elif(ttl_left == -2):
             return None
         else:
             return datetime.now(timezone.utc) + timedelta(seconds=ttl_left)

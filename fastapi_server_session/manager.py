@@ -21,7 +21,7 @@
 from fastapi import Request, Response, HTTPException
 from .interfaces.base import BaseSessionInterface
 from .session import Session, SessionException
-
+from datetime import timedelta
 import uuid
 
 
@@ -34,8 +34,9 @@ def is_valid_uuid(val):
 
 
 class SessionManager:
-    def __init__(self, interface: BaseSessionInterface):
+    def __init__(self, interface: BaseSessionInterface, default_sess_duration: timedelta = timedelta(days=1)):
         self.interface = interface
+        self.default_sess_duration = default_sess_duration
 
     async def get_session(self, request: Request, response: Response):
         """get_session yields an existing session object for a user
@@ -52,7 +53,8 @@ class SessionManager:
             async with Session(request=request,
                     response=response,
                     interface=self.interface,
-                    session_id=session_id) as session:
+                    session_id=session_id,
+                    session_duration=self.default_sess_duration) as session:
                 yield session
         except SessionException:
             raise HTTPException(status_code=401, detail="Error fetching session")
@@ -66,7 +68,8 @@ class SessionManager:
         session = Session(request=request,
                     response=response,
                     interface=self.interface,
-                    session_id=session_id)
+                    session_id=session_id,
+                    session_duration=self.default_sess_duration)
 
         data = await self.interface._get_session_data(session_id)
         if(not data):
@@ -88,7 +91,8 @@ class SessionManager:
         session = Session(request=request,
                     response=response,
                     interface=self.interface,
-                    session_id=session_id)
+                    session_id=session_id,
+                    session_duration=self.default_sess_duration)
         await session.initiate(session_id, {})
         return session
 
