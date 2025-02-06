@@ -65,7 +65,7 @@ class Session(MutableMapping):
 
         sess_exit_time = datetime.now(timezone.utc)
         if((self._expiration_date - sess_exit_time).total_seconds() < 0):
-            self.clear()
+            await self.clear()
             raise SessionException("Session has expired")
 
         if(self._data != None): # session not deleted...
