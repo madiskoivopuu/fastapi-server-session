@@ -19,35 +19,44 @@
 # SOFTWARE.
 
 from .base import BaseSessionInterface
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 try:
-    import redis
+    from redis import asyncio as aioredis
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
-        "RedisSessionInterface requires 'redis' to be installed. Install it using 'pip install redis'"
+        "AsyncRedisSessionInterface requires 'redis' to be installed. Install it using 'pip install redis'"
     )
 
 import json
 
 
-class RedisSessionInterface(BaseSessionInterface):
-    def __init__(self, redis_client: redis.Redis):
+class AsyncRedisSessionInterface(BaseSessionInterface):
+    def __init__(
+        self, 
+        redis_client: aioredis.Redis,
+        until_expires = timedelta(days=1)
+    ):
         self.redis = redis_client
+        self.until_expires = until_expires
 
     async def _set_session_data(self, session_id: str, data: dict):
-        self.redis.set(
-            session_id, json.dumps(data), ex=timedelta(days=15)
-        )  # Session expires after 15 days
+        await self.redis.set(
+            session_id, json.dumps(data), ex=self.until_expires
+        )
 
     async def _get_session_data(self, session_id: str) -> dict | None:
         try:
-            return json.loads(self.redis.get(session_id))
+            return json.loads(await self.redis.get(session_id))
         except:
             return None
 
     async def _delete_session(self, session_id: str):
-        self.redis.delete(str(session_id))
+        await self.redis.delete(str(session_id))
 
-    async def _get_expiration_date(self, session_id: str):
-        raise NotImplementedError("Redis users, implement it")
+    async def _get_expiration_date(self, session_id: str) -> datetime:
+        ttl_left = await self.redis.ttl(session_id)
+        if(ttl_left < 0):
+            return None
+        else:
+            return datetime.now(timezone.utc) + timedelta(seconds=ttl_left)

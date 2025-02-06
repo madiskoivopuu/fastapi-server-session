@@ -50,15 +50,15 @@ class AsyncMysqlSessionInterface(BaseSessionInterface):
         table: name of the MySQL table where session info is stored
     optional:
     All Optional parameters are kwargs
-        expire: timedelta object for ttl
+        until_expires: timedelta object for ttl
     """
     def __init__(
         self,
         pool: aiomysql.Pool,
-        expire: timedelta = timedelta(days=15)
+        until_expires: timedelta = timedelta(days=15)
     ):
         self.pool = pool
-        self.expire = expire
+        self.expire = until_expires
         self._table_created = False
 
     async def init_tables(self):

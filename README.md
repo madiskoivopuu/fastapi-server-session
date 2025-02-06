@@ -11,7 +11,7 @@ At the moment, it supports using Redis and MongoDB as the session datastore. But
 ## Quickstart
 
 
-#### For async MySQL Backend
+#### For async MySQL backend
 
 Note that using this backend requires the `UUID_TO_BIN` function to be present in MySQL.
 
@@ -28,10 +28,20 @@ session_manager = SessionManager(
 )
 ```
 
-#### For Redis & MongoDB Backend
-These backends are currently not supported. While the implementations exist, they will no longer work after some tweaks that had to be done to get MySQL working.
+#### For async Redis backend
 
-If you wish to implement them yourself, fork the repo, create the implementations and then open a pull request.
+```py
+from fastapi_server_session import SessionManager, AsyncRedisSessionInterface, Session
+from redis import asyncio as aioredis
+
+session_manager = SessionManager(
+    interface=AsyncRedisSessionInterface(aioredis.from_url("redis://localhost"))
+)
+```
+
+#### For MongoDB backend
+
+This backend is currently not supported. While the implementations exist, it might not work as expected.
 
 #### Session usage
 

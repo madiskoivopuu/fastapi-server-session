@@ -22,9 +22,9 @@ from datetime import datetime
 
 from .interfaces.base import BaseSessionInterface
 from .interfaces.mongo import MongoSessionInterface
-from .interfaces.redis import RedisSessionInterface
+from .interfaces.async_redis import RedisSessionInterface
 from .interfaces.async_mysql import AsyncMysqlSessionInterface
 from .manager import SessionManager
 from .session import Session
 
-__all__ = ["RedisSessionInterface", "MongoSessionInterface", "SessionManager", "Session"]
+__all__ = ["AsyncRedisSessionInterface", "AsyncMysqlSessionInterface", "MongoSessionInterface", "SessionManager", "Session"]
