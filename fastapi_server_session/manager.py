@@ -41,14 +41,9 @@ class SessionManager:
     async def get_session(self, request: Request, response: Response):
         """get_session yields an existing session object for a user
         
-           If no session is found, None is yielded
+           If no session is found, an error is thrown
         """
         session_id = str(request.cookies.get("session"))        
-        data = await self.interface._get_session_data(session_id)
-        if(not data):
-            yield None
-            return
-
         try:
             async with Session(request=request,
                     response=response,
