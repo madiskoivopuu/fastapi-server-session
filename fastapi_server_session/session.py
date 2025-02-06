@@ -55,7 +55,7 @@ class Session(MutableMapping):
     async def __aenter__(self):
         self.__entered = True
 
-        self._expiration_date = self.interface._get_expiration_date(self.session_id)
+        self._expiration_date = await self.interface._get_expiration_date(self.session_id)
         self._data = await self.interface._get_session_data(self.session_id)
         if(self._data == None):
             raise SessionException("A session must be initiated with `Session.initiate` before using `with Session(...)`")
