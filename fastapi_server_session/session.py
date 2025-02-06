@@ -60,7 +60,7 @@ class Session(MutableMapping):
         if(self._data == None):
             raise SessionException("A session must be initiated with `Session.initiate` before using `with Session(...)`")
 
-    async def __aexit__(self):
+    async def __aexit__(self, exc_type, exc_value, exc_tb):
         self.__entered = False
 
         sess_exit_time = datetime.now(timezone.utc)
