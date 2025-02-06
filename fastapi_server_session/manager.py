@@ -43,13 +43,15 @@ class SessionManager:
         
            If no session is found, an error is thrown
         """
-        session_id = str(request.cookies.get("session"))        
-        try:
-            async with Session(request=request,
+        session_id = str(request.cookies.get("session"))
+        session = Session(request=request,
                     response=response,
                     interface=self.interface,
                     session_id=session_id,
-                    session_duration=self.default_sess_duration) as session:
+                    session_duration=self.default_sess_duration)
+           
+        try:
+            async with session:
                 yield session
         except SessionException:
             raise HTTPException(status_code=401, detail="Error fetching session")
