@@ -26,7 +26,7 @@ from .base import BaseSessionInterface
 import json
 
 try:
-    import aiomysql
+    import aiomysql, pymysql
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "AsyncMysqlSessionInterface requires 'aiomysql' to be installed. Install it using 'pip install aiomysql'"
@@ -38,45 +38,54 @@ _TABLE_CREATE_QUERY = """CREATE TABLE IF NOT EXISTS sessions (
 	`expires_at_utc` datetime NOT NULL,
 	PRIMARY KEY (`session_id`)
 );
-""" # TODO: add schedule to delete expired sessions
+""" 
+
+_SESSION_DELETE_SCHEDULE = """CREATE EVENT IF NOT EXISTS delete_expired_sessions
+    ON SCHEDULE EVERY 4 HOUR
+    DO
+        DELETE FROM sessions WHERE expires_at_utc < UTC_TIMESTAMP() - INTERVAL 5 MINUTE
+"""
 
 class AsyncMysqlSessionInterface(BaseSessionInterface):
     """
     Interface for async MySQL client
 
     args:
-        pool: aiomysql connection pool
-    kwargs:
-        table: name of the MySQL table where session info is stored
-    optional:
-    All Optional parameters are kwargs
-        until_expires: timedelta object for ttl
+        pool_ctx: aiomysql connection pool context manager
+            You can get it by using aiomysql.create_pool(...)
     """
     def __init__(
         self,
-        pool: aiomysql.Pool,
+        pool_ctx: aiomysql.utils._PoolContextManager,
     ):
-        self.pool = pool
-        self._table_created = False
+        self._pool_ctx = pool_ctx
+        self.pool = None
+        self._initiated = False
 
-    async def init_tables(self):
-        if(self._table_created == True):
+    async def _init(self):
+        if(self._initiated == True):
             return
+
+        self.pool = await self._pool_ctx
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute(_TABLE_CREATE_QUERY)
+                await cursor.execute(_SESSION_DELETE_SCHEDULE)
 
                 await conn.commit()
 
-        self._table_created = True
+        self._initiated = True
 
     async def _set_session_data(self, session_id: str, data: dict, expiration_date: datetime | None):
-        await self.init_tables()
+        await self._init()
 
         session_data = json.dumps(data)
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
+                if(expiration_date is not None):
+                    expiration_date = expiration_date.astimezone(timezone.utc)
+
                 q = """INSERT INTO sessions 
                                         (session_id, session_data, expires_at_utc) 
                                     VALUES 
@@ -84,15 +93,12 @@ class AsyncMysqlSessionInterface(BaseSessionInterface):
                                     ON DUPLICATE KEY UPDATE 
                                         session_data = %s""" # exp date is not None for a new session
                 q_params = [session_id, session_data, expiration_date, session_data]
-                if(expiration_date != None):
-                    q += ", expires_at_utc = %s"
-                    q_params.append(expiration_date)
 
                 await cursor.execute(q, q_params)
                 await conn.commit()
 
     async def _get_session_data(self, session_id: str) -> dict:
-        await self.init_tables()
+        await self._init()
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
@@ -105,11 +111,20 @@ class AsyncMysqlSessionInterface(BaseSessionInterface):
                 return json.loads(json_data)
 
     async def _delete_session(self, session_id: str):
-        await self.init_tables()
+        await self._init()
 
         async with self.pool.acquire() as conn:
             async with conn.cursor() as cursor:
                 await cursor.execute("DELETE FROM sessions WHERE session_id = UUID_TO_BIN(%s, 1)", (session_id, ))
 
     async def _get_expiration_date(self, session_id: str):
-        raise NotImplementedError("not implemented..")
+        await self._init()
+
+        async with self.pool.acquire() as conn:
+            async with conn.cursor() as cursor:
+                await cursor.execute("SELECT expires_at_utc FROM sessions WHERE session_id = UUID_TO_BIN(%s, 1)", (session_id, ))
+                data = await cursor.fetchone()
+                if(data[0] == None):
+                    return None
+                
+                return data[0].replace(tzinfo=timezone.utc)

@@ -44,6 +44,10 @@ class SessionManager:
            If no session is found, None is yielded
         """
         session_id = str(request.cookies.get("session"))   
+        if(not is_valid_uuid(session_id)):
+            yield None
+            return
+        
         data = await self.interface._get_session_data(session_id)
         if(not data):
             yield None
@@ -72,10 +76,12 @@ class SessionManager:
                     session_id=session_id,
                     session_duration=self.default_sess_duration)
 
-        data = await self.interface._get_session_data(session_id)
-        if(not data):
-            session_id = str(uuid.uuid4())
-            await session.initiate(session_id, {})
+        if(is_valid_uuid(session_id)):
+            data = await self.interface._get_session_data(session_id)
+            if(not data):
+                await session.initiate(str(uuid.uuid4()), {})
+        else:
+            await session.initiate(str(uuid.uuid4()), {})
         
         try:
             async with session:
