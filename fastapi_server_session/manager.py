@@ -20,7 +20,7 @@
 
 from fastapi import Request, Response, HTTPException
 from .interfaces.base import BaseSessionInterface
-from .session import Session, SessionException
+from .session import Session, SessionException, SessionSettings
 from datetime import timedelta
 import uuid
 
@@ -41,17 +41,11 @@ class SessionManager:
     async def get_session(self, request: Request, response: Response):
         """get_session yields an existing session object for a user
         
-           If no session is found, None is yielded
+           If no session is found, an exception is raised
         """
         session_id = str(request.cookies.get("session"))   
         if(not is_valid_uuid(session_id)):
-            yield None
-            return
-        
-        data = await self.interface._get_session_data(session_id)
-        if(not data):
-            yield None
-            return
+            raise HTTPException(status_code=400, detail="Session ID must be a valid UUID")
 
         try:
             session = Session(request=request,
@@ -69,19 +63,16 @@ class SessionManager:
         
            If the session does not exist, a new one is created, with the data initially set to an empty dictionary
         """
-        session_id = str(request.cookies.get("session"))        
+        session_id = str(request.cookies.get("session"))
+        if(not is_valid_uuid(session_id)):
+            raise HTTPException(status_code=400, detail="Session ID must be a valid UUID")
+
         session = Session(request=request,
                     response=response,
                     interface=self.interface,
                     session_id=session_id,
-                    session_duration=self.default_sess_duration)
-
-        if(is_valid_uuid(session_id)):
-            data = await self.interface._get_session_data(session_id)
-            if(not data):
-                await session.initiate(str(uuid.uuid4()), {})
-        else:
-            await session.initiate(str(uuid.uuid4()), {})
+                    session_duration=self.default_sess_duration,
+                    session_settings=SessionSettings(create_or_renew=True))
         
         try:
             async with session:
