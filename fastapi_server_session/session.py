@@ -60,7 +60,7 @@ class Session(MutableMapping):
 
     def _validity_check(self):
         if(self.__entered == False):
-            raise SessionException(message="Use `async with Session(...)` or FastAPI `session = Depends(...)` to correctly start the session")
+            raise SessionException("Use `async with Session(...)` or FastAPI `session = Depends(...)` to correctly start the session")
 
     async def __aenter__(self):
         self.__entered = True
@@ -70,7 +70,7 @@ class Session(MutableMapping):
         
         if(self._data == None or self._expiration_date == None):
             if(not self._session_settings.create_or_renew):
-                raise SessionException(message="Session does not exist. Automatic new session creation is disabled")
+                raise SessionException("Session does not exist. Automatic new session creation is disabled")
 
             await self.initiate(
                 uuid.uuid4(),
@@ -79,7 +79,7 @@ class Session(MutableMapping):
 
         if(datetime.now(timezone.utc) > self._expiration_date):
             if(not self._session_settings.create_or_renew):
-                raise SessionException(message="Session has expired and automatic new session creation is disabled")
+                raise SessionException("Session has expired and automatic new session creation is disabled")
 
             await self.interface._delete_session(self.session_id)
             await self.initiate(
@@ -95,7 +95,7 @@ class Session(MutableMapping):
         sess_exit_time = datetime.now(timezone.utc)
         if((self._expiration_date - sess_exit_time).total_seconds() < 0):
             await self.clear()
-            raise SessionException(message="Session has expired")
+            raise SessionException("Session has expired")
 
         if(self._data != None): # session not deleted...
             await self.interface._set_session_data(self.session_id, self._data, self._expiration_date)
