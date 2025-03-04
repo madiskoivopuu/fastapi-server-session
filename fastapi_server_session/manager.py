@@ -55,8 +55,8 @@ class SessionManager:
                     session_duration=self.default_sess_duration)
             async with session:
                 yield session
-        except SessionException:
-            raise HTTPException(status_code=401, detail="Error fetching session")
+        except SessionException as e:
+            raise HTTPException(status_code=401, detail=e.args[0])
         
     async def get_or_start_session(self, request: Request, response: Response):
         """get_session yields an session object
@@ -65,7 +65,7 @@ class SessionManager:
         """
         session_id = str(request.cookies.get("session"))
         if(not is_valid_uuid(session_id)):
-            raise HTTPException(status_code=400, detail="Session ID must be a valid UUID")
+            session_id = str(uuid.uuid4())
 
         session = Session(request=request,
                     response=response,
@@ -78,7 +78,7 @@ class SessionManager:
             async with session:
                 yield session
         except SessionException:
-            raise HTTPException(status_code=401, detail="Error fetching session")
+            raise HTTPException(status_code=401, detail=e.args[0])
         
     async def create_session(self, request: Request, response: Response) -> Session:
         """Creates a new session object with data set to an empty dictionary
