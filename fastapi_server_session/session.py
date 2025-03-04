@@ -67,20 +67,21 @@ class Session(MutableMapping):
 
         self._expiration_date = await self.interface._get_expiration_date(self.session_id)
         self._data = await self.interface._get_session_data(self.session_id)
+        
+        if(self._data == None or self._expiration_date == None):
+            if(not self._session_settings.create_or_renew):
+                raise SessionException(message="Session does not exist. Automatic new session creation is disabled")
+
+            await self.initiate(
+                uuid.uuid4(),
+                {}
+            )
+
         if(datetime.now(timezone.utc) > self._expiration_date):
             if(not self._session_settings.create_or_renew):
                 raise SessionException(message="Session has expired and automatic new session creation is disabled")
 
             await self.interface._delete_session(self.session_id)
-            await self.initiate(
-                uuid.uuid4(),
-                {}
-            )
-        
-        if(self._data == None):
-            if(not self._session_settings.create_or_renew):
-                raise SessionException(message="Session does not exist. Automatic new session creation is disabled")
-
             await self.initiate(
                 uuid.uuid4(),
                 {}
