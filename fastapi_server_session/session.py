@@ -107,7 +107,10 @@ class Session(MutableMapping):
         await self.interface._set_session_data(session_id, data, expires_at_date)
         self.response.set_cookie(
             "session", session_id, expires=self.session_duration.total_seconds(), httponly=True
-        )  # Expires after 1 days
+        )
+
+        self._expiration_date = expires_at_date
+        self._data = data
 
     async def clear(self) -> None:
         """Clears and deletes the session"""
