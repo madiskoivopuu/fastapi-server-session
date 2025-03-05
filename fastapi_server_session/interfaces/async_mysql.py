@@ -124,7 +124,7 @@ class AsyncMysqlSessionInterface(BaseSessionInterface):
             async with conn.cursor() as cursor:
                 await cursor.execute("SELECT expires_at_utc FROM sessions WHERE session_id = UUID_TO_BIN(%s, 1)", (session_id, ))
                 data = await cursor.fetchone()
-                if(data[0] == None):
+                if(data == None):
                     return None
                 
                 return data[0].replace(tzinfo=timezone.utc)
