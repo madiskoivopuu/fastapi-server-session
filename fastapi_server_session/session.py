@@ -106,7 +106,7 @@ class Session(MutableMapping):
         expires_at_date = datetime.now(timezone.utc) + self.session_duration
         await self.interface._set_session_data(session_id, data, expires_at_date)
         self.response.set_cookie(
-            "session", session_id, expires=self.session_duration.total_seconds(), httponly=True
+            "session", session_id, expires=expires_at_date, httponly=True
         )
 
         self._expiration_date = expires_at_date
